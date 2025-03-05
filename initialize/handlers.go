@@ -7,6 +7,8 @@ import (
 	"aurora/internal/proxys"
 	officialtypes "aurora/typings/official"
 
+	"strings"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -44,18 +46,36 @@ func (h *Handler) duckduckgo(c *gin.Context) {
 	client := bogdanfinn.NewStdClient()
 	token, err := duckgo.InitXVQD(client, proxyUrl)
 	if err != nil {
-		c.JSON(500, gin.H{
-			"error": err.Error(),
-		})
+		// 检查是否是网络问题
+		if isNetworkError(err) {
+			// 移除当前代理
+			h.proxy.RemoveProxyIP(proxyUrl)
+			c.JSON(500, gin.H{
+				"error": "Network error, proxy removed: " + err.Error(),
+			})
+		} else {
+			c.JSON(500, gin.H{
+				"error": err.Error(),
+			})
+		}
 		return
 	}
 
 	translated_request := duckgoConvert.ConvertAPIRequest(original_request)
 	response, err := duckgo.POSTconversation(client, translated_request, token, proxyUrl)
 	if err != nil {
-		c.JSON(500, gin.H{
-			"error": "request conversion error",
-		})
+		// 检查是否是网络问题
+		if isNetworkError(err) {
+			// 移除当前代理
+			h.proxy.RemoveProxyIP(proxyUrl)
+			c.JSON(500, gin.H{
+				"error": "Network error during conversation, proxy removed: " + err.Error(),
+			})
+		} else {
+			c.JSON(500, gin.H{
+				"error": "request conversion error",
+			})
+		}
 		return
 	}
 
@@ -73,6 +93,29 @@ func (h *Handler) duckduckgo(c *gin.Context) {
 	} else {
 		c.String(200, "data: [DONE]\n\n")
 	}
+}
+
+// 判断是否为网络错误
+func isNetworkError(err error) bool {
+	errMsg := err.Error()
+	networkErrorKeywords := []string{
+		"connection refused",
+		"no such host",
+		"timeout",
+		"network",
+		"reset by peer",
+		"connection closed",
+		"EOF",
+		"broken pipe",
+		"dial tcp",
+	}
+
+	for _, keyword := range networkErrorKeywords {
+		if strings.Contains(strings.ToLower(errMsg), strings.ToLower(keyword)) {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *Handler) engines(c *gin.Context) {
@@ -96,9 +139,10 @@ func (h *Handler) engines(c *gin.Context) {
 	// Supported models
 	modelIDs := []string{
 		"gpt-4o-mini",
+		"o3-mini",
 		"gpt-3.5-turbo-0125",
 		"claude-3-haiku-20240307",
-		"meta-llama/Llama-3-70b-chat-hf",
+		"meta-llama/Llama-3.3-70B-Instruct-Turbo",
 		"mistralai/Mixtral-8x7B-Instruct-v0.1",
 	}
 

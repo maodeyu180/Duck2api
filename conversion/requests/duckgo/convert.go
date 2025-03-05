@@ -16,10 +16,10 @@ func ConvertAPIRequest(api_request officialtypes.APIRequest) duckgotypes.ApiRequ
 	switch {
 	case strings.HasPrefix(modelLower, "gpt-3.5"):
 		realModel = "gpt-4o-mini"
-	case strings.HasPrefix(modelLower, "claude-3-haiku"):
+	case strings.HasPrefix(modelLower, "claude-"):
 		realModel = "claude-3-haiku-20240307"
-	case strings.HasPrefix(modelLower, "llama-3.1-70b"):
-		realModel = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+	case strings.HasPrefix(modelLower, "llama-"):
+		realModel = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
 	case strings.HasPrefix(modelLower, "mixtral-8x7b"):
 		realModel = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 	}
